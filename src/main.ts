@@ -95,6 +95,7 @@ async function run(): Promise<void> {
     )
 
     const failOnSeverityParams = config.fail_on_severity
+    const failOnUnknownLicences = config.fail_on_unknown_licences
     const warnOnly = config.warn_only
     let minSeverity: Severity = 'low'
     // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
@@ -158,7 +159,7 @@ async function run(): Promise<void> {
         JSON.stringify(invalidLicenseChanges)
       )
       summary.addLicensesToSummary(invalidLicenseChanges, config)
-      issueFound ||= await printLicensesBlock(invalidLicenseChanges, warnOnly)
+      issueFound ||= await printLicensesBlock(invalidLicenseChanges, warnOnly, failOnUnknownLicences)
     }
     if (config.deny_packages || config.deny_groups) {
       core.setOutput('denied-changes', JSON.stringify(deniedChanges))
@@ -255,7 +256,8 @@ function printChangeVulnerabilities(change: Change): boolean {
 
 async function printLicensesBlock(
   invalidLicenseChanges: Record<string, Changes>,
-  warnOnly: boolean
+  warnOnly: boolean,
+  failOnUnknownLicences: boolean
 ): Promise<boolean> {
   return core.group('Licenses', async () => {
     let issueFound = false
@@ -281,7 +283,16 @@ async function printLicensesBlock(
         'Dependency review could not detect the validity of all licenses.'
       )
     }
-    printNullLicenses(invalidLicenseChanges.unlicensed)
+    if (invalidLicenseChanges.unlicensed.length > 0) {
+      printNullLicenses(invalidLicenseChanges.unlicensed)
+      const msg = 'Dependency review detected unknown licences.'
+      if (failOnUnknownLicences) {
+        issueFound = true;
+        core.setFailed(msg)
+      } else {
+        core.warning(msg)
+      }
+    }
 
     return issueFound
   })
@@ -296,10 +307,6 @@ function printLicensesError(changes: Changes): void {
 }
 
 function printNullLicenses(changes: Changes): void {
-  if (changes.length === 0) {
-    return
-  }
-
   core.info('\nWe could not detect a license for the following dependencies:')
   for (const change of changes) {
     core.info(

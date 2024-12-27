@@ -99,6 +99,7 @@ export const MergeGroupSchema = z.object({
 export const ConfigurationOptionsSchema = z
   .object({
     fail_on_severity: SeveritySchema,
+    fail_on_unknown_licences: z.boolean().optional().default(false),
     fail_on_scopes: z.array(z.enum(SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),

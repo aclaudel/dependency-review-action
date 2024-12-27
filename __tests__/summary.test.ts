@@ -23,6 +23,7 @@ const defaultConfig: ConfigurationOptions = {
   vulnerability_check: true,
   license_check: true,
   fail_on_severity: 'high',
+  fail_on_unknown_licences: false,
   fail_on_scopes: ['runtime'],
   allow_ghsas: [],
   allow_licenses: [],
