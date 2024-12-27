@@ -658,6 +658,7 @@ function run() {
             const scopedChanges = (0, filter_1.filterChangesByScopes)(config.fail_on_scopes, changes);
             const filteredChanges = (0, filter_1.filterAllowedAdvisories)(config.allow_ghsas, scopedChanges);
             const failOnSeverityParams = config.fail_on_severity;
+            const failOnUnknownLicences = config.fail_on_unknown_licences;
             const warnOnly = config.warn_only;
             let minSeverity = 'low';
             // If failOnSeverityParams is not set or warnOnly is true, the minSeverity is low, to allow all vulnerabilities to be reported as warnings
@@ -689,7 +690,7 @@ function run() {
             if (config.license_check) {
                 core.setOutput('invalid-license-changes', JSON.stringify(invalidLicenseChanges));
                 summary.addLicensesToSummary(invalidLicenseChanges, config);
-                issueFound || (issueFound = yield printLicensesBlock(invalidLicenseChanges, warnOnly));
+                issueFound || (issueFound = yield printLicensesBlock(invalidLicenseChanges, warnOnly, failOnUnknownLicences));
             }
             if (config.deny_packages || config.deny_groups) {
                 core.setOutput('denied-changes', JSON.stringify(deniedChanges));
@@ -766,7 +767,7 @@ function printChangeVulnerabilities(change) {
     }
     return change.vulnerabilities.length > 0;
 }
-function printLicensesBlock(invalidLicenseChanges, warnOnly) {
+function printLicensesBlock(invalidLicenseChanges, warnOnly, failOnUnknownLicences) {
     return __awaiter(this, void 0, void 0, function* () {
         return core.group('Licenses', () => __awaiter(this, void 0, void 0, function* () {
             let issueFound = false;
@@ -788,7 +789,17 @@ function printLicensesBlock(invalidLicenseChanges, warnOnly) {
                 printLicensesError(invalidLicenseChanges.unresolved);
                 core.setFailed('Dependency review could not detect the validity of all licenses.');
             }
-            printNullLicenses(invalidLicenseChanges.unlicensed);
+            if (invalidLicenseChanges.unlicensed.length > 0) {
+                printNullLicenses(invalidLicenseChanges.unlicensed);
+                const msg = 'Dependency review detected unknown licences.';
+                if (failOnUnknownLicences) {
+                    issueFound = true;
+                    core.setFailed(msg);
+                }
+                else {
+                    core.warning(msg);
+                }
+            }
             return issueFound;
         }));
     });
@@ -799,9 +810,6 @@ function printLicensesError(changes) {
     }
 }
 function printNullLicenses(changes) {
-    if (changes.length === 0) {
-        return;
-    }
     core.info('\nWe could not detect a license for the following dependencies:');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
@@ -1129,6 +1137,7 @@ exports.MergeGroupSchema = z.object({
 exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
+    fail_on_unknown_licences: z.boolean().optional().default(false),
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
@@ -50032,6 +50041,7 @@ exports.MergeGroupSchema = z.object({
 exports.ConfigurationOptionsSchema = z
     .object({
     fail_on_severity: exports.SeveritySchema,
+    fail_on_unknown_licences: z.boolean().optional().default(false),
     fail_on_scopes: z.array(z.enum(exports.SCOPES)).default(['runtime']),
     allow_licenses: z.array(z.string()).optional(),
     deny_licenses: z.array(z.string()).optional(),
