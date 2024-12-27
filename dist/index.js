@@ -790,10 +790,10 @@ function printLicensesBlock(invalidLicenseChanges, warnOnly, failOnUnknownLicenc
                 core.setFailed('Dependency review could not detect the validity of all licenses.');
             }
             if (invalidLicenseChanges.unlicensed.length > 0) {
-                issueFound = true;
                 printNullLicenses(invalidLicenseChanges.unlicensed);
                 const msg = 'Dependency review detected unknown licences.';
                 if (failOnUnknownLicences) {
+                    issueFound = true;
                     core.setFailed(msg);
                 }
                 else {
@@ -810,9 +810,6 @@ function printLicensesError(changes) {
     }
 }
 function printNullLicenses(changes) {
-    if (changes.length === 0) {
-        return;
-    }
     core.info('\nWe could not detect a license for the following dependencies:');
     for (const change of changes) {
         core.info(`${ansi_styles_1.default.bold.open}${change.manifest} » ${change.name}@${change.version}${ansi_styles_1.default.bold.close}`);
